@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Berlin Food",
+  "version": "0.1.0",
+  "identifier": "com.imadkasse.berlinfood",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "http://localhost:3000"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Berlin Food — لوحة التحكم",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mbhnuhcjebqszvxcysvd.supabase.co https:; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 https://mbhnuhcjebqszvxcysvd.supabase.co wss://mbhnuhcjebqszvxcysvd.supabase.co; frame-src 'self' https://mbhnuhcjebqszvxcysvd.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mbhnuhcjebqszvxcysvd.supabase.co https:; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 ws://localhost:3000 https://mbhnuhcjebqszvxcysvd.supabase.co wss://mbhnuhcjebqszvxcysvd.supabase.co; frame-src 'self' https://mbhnuhcjebqszvxcysvd.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
