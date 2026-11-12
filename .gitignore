@@ -31,3 +31,5 @@ scripts
 *.sw?
 
 
+# Next js 
+.next
