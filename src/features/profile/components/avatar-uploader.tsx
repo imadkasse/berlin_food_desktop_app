@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { IconTrash, IconUpload } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
-import { removeAvatarAction, uploadAvatarAction } from "@/features/profile/actions";
+import { removeAvatar, uploadAvatar } from "@/features/profile/mutations";
 import { prepareAvatarImage } from "@/features/profile/image";
 
 /** MIME types accepted for a profile picture. */
@@ -23,16 +23,22 @@ export type AvatarUploaderProps = {
   src?: string | null;
   /** Full name, used for the initials fallback. */
   name?: string | null;
+  /** Called after a successful upload or removal so the page can refetch. */
+  onAvatarChanged?: () => void;
 };
 
 /**
  * Profile picture picker.
  *
  * The picture is uploaded to the public `avatars` bucket under the user's own
- * folder (`<userId>/avatar.<ext>`) by `uploadAvatarAction`, which also
- * removes any previous picture so the folder never holds more than one file.
+ * folder (`<userId>/avatar.<ext>`) by `uploadAvatar`, which also removes any
+ * previous picture so the folder never holds more than one file.
  */
-export function AvatarUploader({ src = null, name = null }: AvatarUploaderProps) {
+export function AvatarUploader({
+  src = null,
+  name = null,
+  onAvatarChanged,
+}: AvatarUploaderProps) {
   const [preview, setPreview] = useState<string | null>(src);
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -69,11 +75,7 @@ export function AvatarUploader({ src = null, name = null }: AvatarUploaderProps)
 
     void prepareAvatarImage(file)
       .then(async (prepared) => {
-        const result = await uploadAvatarAction({
-          fileName: prepared.fileName,
-          base64: prepared.base64,
-          contentType: prepared.contentType,
-        });
+        const result = await uploadAvatar(prepared.file);
 
         if (result.ok) {
           // The public URL of the bucket is stable per path, so a cache
@@ -84,6 +86,7 @@ export function AvatarUploader({ src = null, name = null }: AvatarUploaderProps)
               : localPreview,
           );
           toast.success(result.message);
+          onAvatarChanged?.();
         } else {
           setPreview(src);
           setError(result.error);
@@ -108,11 +111,12 @@ export function AvatarUploader({ src = null, name = null }: AvatarUploaderProps)
     setRemoving(true);
     setError(null);
 
-    void removeAvatarAction()
+    void removeAvatar()
       .then((result) => {
         if (result.ok) {
           setPreview(null);
           toast.success(result.message);
+          onAvatarChanged?.();
         } else {
           setError(result.error);
           toast.error("تعذّر إزالة الصورة");

@@ -9,7 +9,7 @@ import { IconCheck } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import type { Json } from "@/types/database.types";
-import { updateProfileAction } from "@/features/profile/actions";
+import { updateProfile } from "@/features/profile/mutations";
 import {
   parseAddress,
   serializeAddress,
@@ -102,7 +102,7 @@ export function PersonalDetailsForm({ view, onSaved }: PersonalDetailsFormProps)
     setSaving(true);
 
     try {
-      const result = await updateProfileAction({
+      const result = await updateProfile({
         fullName,
         phoneNumber,
         address: serializeAddress(address),

@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 
-import { createProductAction, updateProductAction } from "../actions";
+import { createProduct, updateProduct } from "../mutations";
 import { safeImageUrl } from "../image-url";
 import type { MenuCategory, MenuItemView } from "../types";
 import {
@@ -36,8 +36,8 @@ export type ProductDialogProps = {
 /**
  * Create / edit dialog for a menu item.
  *
- * All validation messages are inline and written in Arabic; the server repeats
- * the same checks before touching the database.
+ * All validation messages are inline and written in Arabic; the mutation helper
+ * repeats the same checks before touching the database.
  *
  * The form state lives in an inner component that is remounted (via `key`)
  * whenever the dialog opens or the edited product changes — that guarantees a
@@ -130,8 +130,8 @@ function ProductDialogInner({
     };
 
     const result = isEditing
-      ? await updateProductAction({ id: product.id, ...payload })
-      : await createProductAction(payload);
+      ? await updateProduct({ id: product.id, ...payload })
+      : await createProduct(payload);
 
     setSaving(false);
 

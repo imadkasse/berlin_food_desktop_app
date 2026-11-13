@@ -1,18 +1,19 @@
-import { AppShell } from "@/components/dashboard/app-shell";
-import { SessionHydrator } from "@/components/dashboard/session-hydrator";
-import { requireSession } from "@/lib/auth/session";
+"use client";
 
-export default async function DashboardLayout({
+import { AppShell } from "@/components/dashboard/app-shell";
+import { RequireAuth } from "@/lib/session";
+import { useSessionStore } from "@/stores/session";
+
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireSession();
+  const profile = useSessionStore((state) => state.user);
 
   return (
-    <>
-      <SessionHydrator profile={session.profile} />
-      <AppShell profile={session.profile}>{children}</AppShell>
-    </>
+    <RequireAuth>
+      <AppShell profile={profile}>{children}</AppShell>
+    </RequireAuth>
   );
 }

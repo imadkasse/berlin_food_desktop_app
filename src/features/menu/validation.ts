@@ -1,7 +1,7 @@
 /**
  * Client-safe validation for the Menu feature.
  *
- * The same rules are re-applied on the server inside `src/features/menu/actions.ts`
+ * The same rules are re-applied inside `src/features/menu/mutations.ts`
  * — the client validation is only there to give instant, friendly feedback.
  */
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,9 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { cn } from "@/lib/cn";
 import {
-  changePasswordAction,
-  signOutAllDevicesAction,
-} from "@/features/profile/actions";
+  changePassword,
+  signOutAllDevices,
+} from "@/features/profile/mutations";
 import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_HINT,
@@ -63,10 +64,11 @@ const STRENGTH_COLOR: Record<0 | 1 | 2 | 3, string> = {
 /**
  * Tab 3 — «كلمة المرور».
  *
- * The current password is verified server-side by re-authenticating the
- * account; the client only performs instant, non-authoritative validation.
+ * The current password is verified by re-authenticating through the browser
+ * auth SDK; the client only performs instant, non-authoritative validation.
  */
 export function PasswordForm() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -101,7 +103,7 @@ export function PasswordForm() {
     setSubmitting(true);
 
     try {
-      const result = await changePasswordAction({
+      const result = await changePassword({
         currentPassword,
         newPassword,
         confirmPassword,
@@ -131,14 +133,17 @@ export function PasswordForm() {
     setSigningOut(true);
 
     try {
-      const result = await signOutAllDevicesAction();
+      const result = await signOutAllDevices();
 
-      if (!result.ok) {
-        setSignOutOpen(false);
-        toast.error("تعذّر تسجيل الخروج", {
-          description: result.error,
-        });
+      if (result.ok) {
+        router.push("/login");
+        return;
       }
+
+      setSignOutOpen(false);
+      toast.error("تعذّر تسجيل الخروج", {
+        description: result.error,
+      });
     } catch {
       setSignOutOpen(false);
       toast.error("تعذّر تسجيل الخروج", {

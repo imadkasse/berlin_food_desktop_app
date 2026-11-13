@@ -13,6 +13,14 @@ export type SessionState = {
   clearUser: () => void;
 };
 
+/**
+ * Client-side session store.
+ *
+ * The store is hydrated by `AuthProvider` on mount via the `verify-session`
+ * Edge Function so the persisted profile is always refreshed against the
+ * server. Components that need the current admin should read from this store
+ * or from the `useSession` / `useRole` / `useCan` hooks.
+ */
 export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({

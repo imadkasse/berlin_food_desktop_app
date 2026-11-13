@@ -7,11 +7,10 @@ import { cn } from "@/lib/cn";
 import { IconClose, IconImage, IconUpload } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
 
-import { uploadMenuImageAction } from "../actions";
+import { uploadMenuImage } from "../mutations";
 import { safeImageUrl } from "../image-url";
 import type { ImageScope } from "../types";
 import {
-  fileToBase64,
   IMAGE_ACCEPT_ATTRIBUTE,
   MAX_IMAGE_LABEL,
   validateImageFile,
@@ -34,9 +33,9 @@ export type ImageUploaderProps = {
 /**
  * Drag-and-drop image picker.
  *
- * The file is validated on the client (type + size) and then uploaded through
- * a server action that re-validates both before writing to the public
- * `menu_items` storage bucket.
+ * The file is validated on the client (type + size) and then uploaded directly
+ * to the public `menu_items` storage bucket through the browser Supabase
+ * client.
  */
 export function ImageUploader({
   value,
@@ -67,12 +66,8 @@ export function ImageUploader({
       setUploading(true);
 
       try {
-        const base64 = await fileToBase64(file);
-
-        const result = await uploadMenuImageAction({
-          fileName: file.name,
-          base64,
-          contentType: file.type,
+        const result = await uploadMenuImage({
+          file,
           scope,
         });
 

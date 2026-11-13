@@ -48,22 +48,22 @@
 ## 3. Phases
 
 ### Phase 0 — Foundations (sequential, unblocks all)
-- [ ] Create `supabase/functions/_shared/` (`cors.ts`, `auth.ts`, `permissions.ts`, `rbac.ts`).
-- [ ] Copy pure permission matrix + `ROLE_RANK` + `canCreateRole` + `checkTargetPrivilege` into `_shared`.
-- [ ] Create `verify-session` Edge Function.
-- [ ] Create `src/lib/api/` typed wrapper over `supabase.functions.invoke()` (returns `ActionResult`/`DetailResult`, Arabic error mapping).
-- [ ] Create `src/lib/session/` — `AuthProvider`, `RequireAuth`, `usePermissions`/`useRole`.
-- [ ] Rewire `src/stores/session.ts` to hydrate from the provider (replace `SessionHydrator`).
-- [ ] Root `layout.tsx` wraps children in `AuthProvider`; dashboard `layout.tsx` uses `RequireAuth`.
-- [ ] New migration `supabase/migrations/<ts>_menu_images_storage_policies.sql` (bucket + policies).
-- [ ] Optional hardening migration: `revoke update (email) on public.profiles from authenticated;`.
-- [ ] Verify: login → session → gate → redirect works end-to-end.
+- [x] Create `supabase/functions/_shared/` (`cors.ts`, `auth.ts`, `permissions.ts`, `rbac.ts`, `types.ts`).
+- [x] Copy pure permission matrix + `ROLE_RANK` + `canCreateRole` + `checkTargetPrivilege` into `_shared`.
+- [x] Create `verify-session` Edge Function.
+- [x] Create `src/lib/api/` typed wrapper over `supabase.functions.invoke()` (returns `ActionResult`/`DetailResult`, Arabic error mapping).
+- [x] Create `src/lib/session/` — `AuthProvider`, `RequireAuth`, `usePermissions`/`useRole`.
+- [x] Rewire `src/stores/session.ts` to hydrate from the provider (replace `SessionHydrator`).
+- [x] Root `layout.tsx` wraps children in `AuthProvider`; dashboard `layout.tsx` uses `RequireAuth`.
+- [x] New migration `supabase/migrations/20261113000001_menu_images_storage_policies.sql` (bucket + policies).
+- [x] Optional hardening migration: `revoke update (email) on public.profiles from authenticated;`.
+- [x] Verify: login → session → gate → redirect works end-to-end.
 
 ### Phase 1 — Menu + Profile (parallel, proof-of-pattern)
-- [ ] `features/menu/hooks.ts` — `useMenuSnapshot`.
-- [ ] Replace `features/menu/actions.ts` with browser SDK mutations.
-- [ ] `features/profile/hooks.ts` — `useProfileView`; move avatar/password to browser SDK.
-- [ ] Convert `menu/page.tsx` and `profile/page.tsx` to client components; replace `router.refresh()` with local re-fetch.
+- [x] `features/menu/hooks.ts` — `useMenuSnapshot`.
+- [x] Replace `features/menu/actions.ts` with browser SDK mutations.
+- [x] `features/profile/hooks.ts` — `useProfileView`; move avatar/password to browser SDK.
+- [x] Convert `menu/page.tsx` and `profile/page.tsx` to client components; replace `router.refresh()` with local re-fetch.
 
 ### Phase 2 — Orders + Dashboard (parallel)
 - [ ] `features/orders/hooks.ts` — `useOrders`, `useOrderStats`, `useOrderDetail`.
@@ -88,11 +88,20 @@
 
 ## 4. File inventory
 
-**Delete:** `src/proxy.ts`, `src/lib/auth/guard.ts`, `src/lib/auth/session.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/admin.ts`, all `src/features/*/actions.ts`, all `src/features/*/queries.ts`, `src/services/*.ts`, `src/components/dashboard/session-hydrator.tsx`, `src/app/dashboard/users/[id]/` route, `src/app/dashboard/orders/[id]/` route.
+### Delete
+- [x] `src/components/dashboard/session-hydrator.tsx` (deleted in Phase 0).
+- [x] `src/features/menu/actions.ts`, `src/features/menu/queries.ts`, `src/services/menu.ts`, `src/features/menu/database.types.ts`, `src/features/profile/actions.ts`, `src/services/profile.ts` (deleted in Phase 1).
+- [ ] `src/proxy.ts`, `src/lib/auth/guard.ts`, `src/lib/auth/session.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/admin.ts`, all remaining `src/features/*/actions.ts`, all remaining `src/features/*/queries.ts`, remaining `src/services/*.ts`, `src/app/dashboard/users/[id]/` route, `src/app/dashboard/orders/[id]/` route.
 
-**New:** `supabase/functions/{_shared/*, verify-session, admin-create-user, admin-update-user, admin-set-role, admin-delete-user, admin-approve-delivery}`, `supabase/migrations/<ts>_menu_images_storage_policies.sql`, `src/lib/session/*`, `src/lib/api/*`, `src/features/*/hooks.ts`.
+### New
+- [x] `supabase/functions/_shared/{cors,auth,permissions,rbac,types}.ts`, `supabase/functions/import_map.json`, `supabase/functions/verify-session/index.ts`, `supabase/migrations/20261113000001_menu_images_storage_policies.sql`, `supabase/migrations/20261113000002_profiles_email_hardening.sql`, `src/lib/api/edge.ts`, `src/lib/session/{types,AuthProvider,RequireAuth,hooks,index}.ts` (created in Phase 0).
+- [x] `src/features/menu/hooks.ts`, `src/features/menu/mutations.ts`, `src/features/profile/hooks.ts`, `src/features/profile/mutations.ts` (created in Phase 1).
+- [ ] `supabase/functions/{admin-create-user, admin-update-user, admin-set-role, admin-delete-user, admin-approve-delivery}`, remaining `src/features/*/hooks.ts`.
 
-**Modified:** every `src/app/dashboard/*/page.tsx`, `src/app/layout.tsx`, `src/app/dashboard/layout.tsx`, `next.config.ts`, client components that call `actions.ts` or `router.refresh()`.
+### Modified
+- [x] `src/stores/session.ts`, `src/app/layout.tsx`, `src/app/dashboard/layout.tsx` (modified in Phase 0).
+- [x] `src/app/dashboard/menu/page.tsx`, `src/features/menu/components/menu-view.tsx`, `src/features/menu/components/product-dialog.tsx`, `src/features/menu/components/categories-dialog.tsx`, `src/features/menu/components/image-uploader.tsx`, `src/features/menu/validation.ts`, `src/types/database.types.ts`, `src/app/dashboard/profile/page.tsx`, profile components in `src/features/profile/components/`, `src/features/profile/image.ts` (modified in Phase 1).
+- [ ] remaining `src/app/dashboard/*/page.tsx`, `next.config.ts`, client components that call `actions.ts` or `router.refresh()`.
 
 ## 5. Risks / verify during implementation
 

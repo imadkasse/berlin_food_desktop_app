@@ -39,7 +39,13 @@ const TAB_META: Record<ProfileTab, { title: string; description: string }> = {
  * Owns the active tab so the identity column on the right stays static while
  * the content on the left switches between the four sections.
  */
-export function ProfileTabs({ view }: { view: ProfileView }) {
+export type ProfileTabsProps = {
+  view: ProfileView;
+  /** Called after the profile is updated so the page can refresh its data. */
+  onProfileUpdated?: () => void | Promise<void>;
+};
+
+export function ProfileTabs({ view, onProfileUpdated }: ProfileTabsProps) {
   const [tab, setTab] = useState<ProfileTab>("personal");
   const meta = TAB_META[tab];
 
@@ -64,7 +70,9 @@ export function ProfileTabs({ view }: { view: ProfileView }) {
         </CardHeader>
 
         <CardContent>
-          {tab === "personal" ? <PersonalDetailsForm view={view} /> : null}
+          {tab === "personal" ? (
+            <PersonalDetailsForm view={view} onSaved={onProfileUpdated} />
+          ) : null}
           {tab === "account" ? (
             <AccountDetails view={view} onGoToPersonal={() => setTab("personal")} />
           ) : null}

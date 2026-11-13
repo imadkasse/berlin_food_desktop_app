@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -10,13 +9,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconPackage, IconPlus, IconSearch } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
 
+import { useMenuSnapshot } from "../hooks";
 import {
-  deleteProductAction,
-  updateProductAvailabilityAction,
-} from "../actions";
+  deleteProduct,
+  updateProductAvailability,
+} from "../mutations";
 import type {
   AvailabilityFilter,
-  MenuCategory,
   MenuItemView,
   MenuSort,
 } from "../types";
@@ -26,22 +25,25 @@ import { CategoryRail } from "./category-rail";
 import { MenuFilters } from "./menu-filters";
 import { ProductCard } from "./product-card";
 import { ProductDialog } from "./product-dialog";
-
-export type MenuViewProps = {
-  categories: MenuCategory[];
-  items: MenuItemView[];
-  totalItems: number;
-};
+import { ProductGridSkeleton } from "./product-grid-skeleton";
 
 /**
  * Client shell of the Menu page.
  *
- * Holds the view state (selected category, search, availability, sorting) and
- * owns every dialog. Mutations go through server actions; the router is
- * refreshed afterwards so the page always renders server-truth data.
+ * Holds the view state (selected category, search, availability, sorting),
+ * owns every dialog, and keeps the menu snapshot fresh through the browser
+ * Supabase client. Mutations trigger a local re-fetch instead of a full page
+ * refresh.
  */
-export function MenuView({ categories, items, totalItems }: MenuViewProps) {
-  const router = useRouter();
+export function MenuView() {
+  const {
+    categories,
+    items,
+    totalItems,
+    isLoading,
+    error,
+    refetch,
+  } = useMenuSnapshot();
   const toast = useToast();
 
   const [query, setQuery] = useState("");
@@ -90,7 +92,7 @@ export function MenuView({ categories, items, totalItems }: MenuViewProps) {
   ) => {
     setBusyItemId(item.id);
 
-    const result = await updateProductAvailabilityAction({
+    const result = await updateProductAvailability({
       id: item.id,
       isAvailable: next,
     });
@@ -103,13 +105,13 @@ export function MenuView({ categories, items, totalItems }: MenuViewProps) {
     }
 
     toast.success(result.message);
-    router.refresh();
+    await refetch();
   };
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
 
-    const result = await deleteProductAction({ id: pendingDelete.id });
+    const result = await deleteProduct({ id: pendingDelete.id });
 
     if (!result.ok) {
       toast.error(result.error);
@@ -118,7 +120,7 @@ export function MenuView({ categories, items, totalItems }: MenuViewProps) {
 
     toast.success(result.message);
     setPendingDelete(null);
-    router.refresh();
+    await refetch();
   };
 
   const clearFilters = () => {
@@ -131,6 +133,46 @@ export function MenuView({ categories, items, totalItems }: MenuViewProps) {
   const heading = activeCategory
     ? activeCategory.name
     : "كل الأصناف";
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="القائمة"
+          description="إدارة الأصناف والتصنيفات والأسعار وحالة التوفّر"
+          actions={
+            <Button icon={<IconPlus size={17} />} onClick={openCreate} disabled>
+              إضافة صنف
+            </Button>
+          }
+        />
+        <ProductGridSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="القائمة"
+          description="إدارة الأصناف والتصنيفات والأسعار وحالة التوفّر"
+        />
+        <div className="rounded-lg bg-surface p-6">
+          <EmptyState
+            icon={<IconPackage size={22} />}
+            title="تعذّر تحميل القائمة"
+            description={error}
+            action={
+              <Button onClick={() => void refetch()}>
+                إعادة المحاولة
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -225,14 +267,14 @@ export function MenuView({ categories, items, totalItems }: MenuViewProps) {
         product={editingProduct}
         categories={categories}
         defaultCategoryId={categoryId}
-        onSaved={() => router.refresh()}
+        onSaved={() => void refetch()}
       />
 
       <CategoriesDialog
         open={categoriesDialogOpen}
         onOpenChange={setCategoriesDialogOpen}
         categories={categories}
-        onChanged={() => router.refresh()}
+        onChanged={() => void refetch()}
       />
 
       <ConfirmDialog

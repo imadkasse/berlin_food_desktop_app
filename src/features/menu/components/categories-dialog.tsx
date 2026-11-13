@@ -16,10 +16,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
 import {
-  createCategoryAction,
-  deleteCategoryAction,
-  updateCategoryAction,
-} from "../actions";
+  createCategory,
+  deleteCategory,
+  updateCategory,
+} from "../mutations";
 import type { MenuCategory } from "../types";
 import { safeImageUrl } from "../image-url";
 import { type CategoryFormErrors, validateCategoryForm } from "../validation";
@@ -111,12 +111,12 @@ function CategoriesDialogInner({
 
     const result =
       mode.kind === "edit"
-        ? await updateCategoryAction({
+        ? await updateCategory({
             id: mode.id,
             name: name.trim(),
             imageUrl,
           })
-        : await createCategoryAction({ name: name.trim(), imageUrl });
+        : await createCategory({ name: name.trim(), imageUrl });
 
     setSaving(false);
 
@@ -134,7 +134,7 @@ function CategoriesDialogInner({
     if (mode.kind !== "confirm-delete") return;
 
     setSaving(true);
-    const result = await deleteCategoryAction({ id: mode.id });
+    const result = await deleteCategory({ id: mode.id });
     setSaving(false);
 
     if (!result.ok) {

@@ -1,10 +1,10 @@
 /**
  * Berlin Food — Profile picture preparation (browser only).
  *
- * The picture is sent to the server as base64 inside a Server Action, so the
- * payload has to stay comfortably below the Next.js Server Action body limit
- * (1 MB by default). Any image that is larger than the avatar canvas is
- * therefore re-encoded in the browser before it is uploaded.
+ * Images are uploaded directly through the Supabase browser SDK, so the result
+ * is returned as a `File` ready for `supabase.storage.upload`. Pictures that
+ * are larger than the avatar canvas are re-encoded in the browser before
+ * upload to keep storage small.
  *
  * The original file format is preserved as long as the picture already fits;
  * otherwise it is re-encoded as WebP, which keeps the alpha channel of PNG
@@ -21,33 +21,10 @@ export const MAX_DIRECT_BYTES = 200 * 1024;
 const ENCODE_QUALITY = 0.85;
 
 export type PreparedImage = {
-  base64: string;
+  file: File;
   contentType: string;
   fileName: string;
 };
-
-function readAsBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error("read-failed"));
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      const base64 = result.includes(",")
-        ? result.slice(result.indexOf(",") + 1)
-        : result;
-
-      if (!base64) {
-        reject(new Error("read-failed"));
-        return;
-      }
-
-      resolve(base64);
-    };
-
-    reader.readAsDataURL(blob);
-  });
-}
 
 async function loadBitmap(file: File): Promise<ImageBitmap> {
   if (typeof createImageBitmap === "function") {
@@ -96,12 +73,11 @@ function replaceExtension(fileName: string, extension: string): string {
 }
 
 /**
- * Prepares a picked file for the upload:
- * - small pictures are sent untouched (original format and quality);
+ * Prepares a picked file for upload:
+ * - small pictures are returned untouched (original format and quality);
  * - large pictures are scaled down to {@link MAX_AVATAR_EDGE} and re-encoded.
  */
 export async function prepareAvatarImage(file: File): Promise<PreparedImage> {
-  const originalBase64 = await readAsBase64(file);
   const bitmap = await loadBitmap(file);
 
   const needsResize =
@@ -110,7 +86,7 @@ export async function prepareAvatarImage(file: File): Promise<PreparedImage> {
 
   if (!needsResize && !needsCompression) {
     bitmap.close?.();
-    return { base64: originalBase64, contentType: file.type, fileName: file.name };
+    return { file, contentType: file.type, fileName: file.name };
   }
 
   try {
@@ -138,7 +114,6 @@ export async function prepareAvatarImage(file: File): Promise<PreparedImage> {
       blob = await canvasToBlob(canvas, "image/jpeg", ENCODE_QUALITY);
     }
 
-    const base64 = await readAsBase64(blob);
     const contentType = blob.type || "image/webp";
     const extension = contentType.includes("png")
       ? "png"
@@ -146,11 +121,10 @@ export async function prepareAvatarImage(file: File): Promise<PreparedImage> {
         ? "jpg"
         : "webp";
 
-    return {
-      base64,
-      contentType,
-      fileName: replaceExtension(file.name, extension),
-    };
+    const fileName = replaceExtension(file.name, extension);
+    const preparedFile = new File([blob], fileName, { type: contentType });
+
+    return { file: preparedFile, contentType, fileName };
   } finally {
     bitmap.close?.();
   }
