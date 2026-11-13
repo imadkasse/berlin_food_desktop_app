@@ -33,3 +33,6 @@ scripts
 
 # Next js 
 .next
+
+# suapbase
+supabase
