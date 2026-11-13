@@ -37,3 +37,7 @@ scripts
 # Supabase — track functions & migrations, ignore local CLI state
 supabase/.temp
 supabase/.branches
+
+
+# build 
+out
