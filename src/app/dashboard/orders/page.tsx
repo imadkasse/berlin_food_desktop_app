@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { Suspense, useMemo, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { OrdersSkeleton } from "./loading";
  * and mutations now flow through the browser Supabase client; the server-side
  * `orders` actions/queries/service have been removed.
  */
-export default function OrdersPage() {
+function OrdersPageContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -119,5 +119,23 @@ export default function OrdersPage() {
         onRefresh={refetch}
       />
     </div>
+  );
+}
+
+/**
+ * `useSearchParams()` forces a client-side render bailout, so the page content
+ * must live inside a `<Suspense>` boundary for `output: 'export'`.
+ */
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div dir="rtl" className="flex flex-col gap-6">
+          <OrdersSkeleton />
+        </div>
+      }
+    >
+      <OrdersPageContent />
+    </Suspense>
   );
 }

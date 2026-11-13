@@ -15,7 +15,7 @@ import {
   type Role,
 } from "@/lib/auth/permissions";
 import { VEHICLE_LABELS } from "@/types/app";
-import { createUserAction } from "@/features/users/actions";
+import { createUser } from "@/features/users/mutations";
 import { validateCreateUserInput } from "@/features/users/validation";
 import type { CreateUserFieldErrors } from "@/features/users/validation";
 
@@ -140,7 +140,7 @@ export function CreateUserDialog({
 
     setSubmitting(true);
     try {
-      const result = await createUserAction({
+      const result = await createUser({
         fullName: form.fullName,
         email: form.email,
         phoneNumber: form.phoneNumber,

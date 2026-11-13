@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import type { Role } from "@/lib/auth/permissions";
-import { deleteAdminAccountAction } from "@/features/admins/actions";
+import { deleteAdminAccount } from "@/features/admins/mutations";
 import type { AdminCounts, AdminFilters, AdminRoleFilter } from "@/features/admins/types";
 import type { ProfileRow } from "@/types/app";
 import { AdminsFilters } from "./admins-filters";
@@ -31,6 +31,8 @@ export type AdminsViewProps = {
   currentRole: Role | null;
   /** The id of the signed-in administrator. */
   currentUserId: string;
+  /** Reloads the page data after a mutation. */
+  onRefresh: () => Promise<void> | void;
 };
 
 /** Debounce applied to the free-text search before it reaches the server. */
@@ -65,6 +67,7 @@ export function AdminsView({
   filters,
   currentRole,
   currentUserId,
+  onRefresh,
 }: AdminsViewProps) {
   const toast = useToast();
   const router = useRouter();
@@ -142,11 +145,11 @@ export function AdminsView({
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    const result = await deleteAdminAccountAction({ id: deleteTarget.id });
+    const result = await deleteAdminAccount({ id: deleteTarget.id });
 
     if (result.ok) {
       toast.success(result.message);
-      router.refresh();
+      await onRefresh();
     } else {
       toast.error(result.error);
     }
@@ -245,7 +248,7 @@ export function AdminsView({
         currentRole={currentRole}
         onCreated={(message) => {
           toast.success(message);
-          router.refresh();
+          void onRefresh();
         }}
         onError={(message) => toast.error(message)}
       />
@@ -260,7 +263,7 @@ export function AdminsView({
         currentUserId={currentUserId}
         onChanged={(message) => {
           toast.success(message);
-          router.refresh();
+          void onRefresh();
         }}
         onError={(message) => toast.error(message)}
       />

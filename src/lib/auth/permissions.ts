@@ -4,7 +4,8 @@
  * This module is the single source of truth for what each role may do.
  * Every helper here is **pure** so it can be unit-tested and safely reused
  * on the client (for UI affordances only). The authoritative enforcement
- * happens server-side in `src/lib/auth/guard.ts`.
+ * happens server-side in the Supabase Edge Functions (`admin-*`) and in
+ * Row Level Security policies — never in the client.
  */
 
 export const ROLES = [

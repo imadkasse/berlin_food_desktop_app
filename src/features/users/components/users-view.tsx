@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import type { Role } from "@/lib/auth/permissions";
-import { deleteUserAction } from "@/features/users/actions";
+import { deleteUser } from "@/features/users/mutations";
 import {
   USER_TAB_LABELS,
   type UserCounts,
@@ -45,6 +45,10 @@ export type UsersViewProps = {
   canDelete: boolean;
   /** `true` when the administrator may see the «المشرفون» tab. */
   canManageAdmins: boolean;
+  /** Reloads the page data after a mutation. */
+  onRefresh: () => Promise<void> | void;
+  /** Opens the details drawer of the given account. */
+  onViewDetails: (userId: string) => void;
 };
 
 /** Debounce applied to the free-text search before it reaches the server. */
@@ -69,6 +73,8 @@ export function UsersView({
   canManageRoles,
   canDelete,
   canManageAdmins,
+  onRefresh,
+  onViewDetails,
 }: UsersViewProps) {
   const toast = useToast();
   const router = useRouter();
@@ -163,18 +169,14 @@ export function UsersView({
     updateQuery({ page: nextPage === 1 ? null : String(nextPage) });
   };
 
-  const handleViewDetails = (user: ProfileRow) => {
-    router.push(`/dashboard/users/${user.id}`);
-  };
-
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    const result = await deleteUserAction({ id: deleteTarget.id });
+    const result = await deleteUser({ id: deleteTarget.id });
 
     if (result.ok) {
       toast.success(result.message);
-      router.refresh();
+      await onRefresh();
     } else {
       toast.error(result.error);
     }
@@ -251,7 +253,7 @@ export function UsersView({
         onEdit={setEditTarget}
         onChangeRole={setRoleTarget}
         onDelete={setDeleteTarget}
-        onViewDetails={handleViewDetails}
+        onViewDetails={onViewDetails}
         onClearFilters={handleClearFilters}
       />
 
@@ -273,7 +275,7 @@ export function UsersView({
         currentRole={currentRole}
         onCreated={(message) => {
           toast.success(message);
-          router.refresh();
+          void onRefresh();
         }}
         onError={(message) => toast.error(message)}
       />
@@ -286,7 +288,7 @@ export function UsersView({
         user={editTarget}
         onSaved={(message) => {
           toast.success(message);
-          router.refresh();
+          void onRefresh();
         }}
         onError={(message) => toast.error(message)}
       />
@@ -300,7 +302,7 @@ export function UsersView({
         currentRole={currentRole}
         onChanged={(message) => {
           toast.success(message);
-          router.refresh();
+          void onRefresh();
         }}
         onError={(message) => toast.error(message)}
       />

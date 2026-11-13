@@ -12,10 +12,10 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { formatNumber } from "@/lib/format";
 import {
-  approveDeliveryRequestAction,
-  deleteDeliveryRequestAction,
-  updateDeliveryRequestStatusAction,
-} from "@/features/deliveries/actions";
+  approveDeliveryRequest,
+  deleteDeliveryRequest,
+  updateDeliveryStatus,
+} from "@/features/deliveries/mutations";
 import type {
   DeliveryPeriodFilter,
   DeliveryRequestFilters,
@@ -37,6 +37,8 @@ export type DeliveryRequestsViewProps = {
   stats: DeliveryStats;
   filters: DeliveryRequestFilters;
   canWrite: boolean;
+  /** Re-loads the current page and the KPI counters after a mutation. */
+  onRefresh: () => Promise<void>;
 };
 
 /** Debounce applied to the free-text search before it reaches the server. */
@@ -57,6 +59,7 @@ export function DeliveryRequestsView({
   stats,
   filters,
   canWrite,
+  onRefresh,
 }: DeliveryRequestsViewProps) {
   const toast = useToast();
   const router = useRouter();
@@ -143,10 +146,11 @@ export function DeliveryRequestsView({
   };
 
   const handleApprove = async (id: string, promoteCourier: boolean) => {
-    const result = await approveDeliveryRequestAction({ id, promoteCourier });
+    const result = await approveDeliveryRequest({ id, promoteCourier });
 
     if (result.ok) {
       toast.success(result.message);
+      await onRefresh();
       return true;
     }
 
@@ -155,13 +159,11 @@ export function DeliveryRequestsView({
   };
 
   const handleReject = async (id: string) => {
-    const result = await updateDeliveryRequestStatusAction({
-      id,
-      status: "rejected",
-    });
+    const result = await updateDeliveryStatus({ id, status: "rejected" });
 
     if (result.ok) {
       toast.success(result.message);
+      await onRefresh();
       return true;
     }
 
@@ -172,13 +174,16 @@ export function DeliveryRequestsView({
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    const result = await deleteDeliveryRequestAction({ id: deleteTarget.id });
+    const result = await deleteDeliveryRequest({ id: deleteTarget.id });
 
     if (result.ok) {
       toast.success(result.message);
+      await onRefresh();
     } else {
       toast.error(result.error);
     }
+
+    setDeleteTarget(null);
   };
 
   const isFiltered =
@@ -269,6 +274,7 @@ export function DeliveryRequestsView({
       ) : null}
 
       <RequestDetailDialog
+        key={detailRequest?.id ?? "closed"}
         request={detailRequest}
         open={Boolean(detailRequest)}
         onOpenChange={(open) => {
@@ -282,7 +288,10 @@ export function DeliveryRequestsView({
       <CreateRequestDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(message) => toast.success(message)}
+        onCreated={(message) => {
+          toast.success(message);
+          void onRefresh();
+        }}
         onError={(message) => toast.error(message)}
       />
 

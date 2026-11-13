@@ -34,5 +34,6 @@ scripts
 # Next js 
 .next
 
-# suapbase
-supabase
+# Supabase — track functions & migrations, ignore local CLI state
+supabase/.temp
+supabase/.branches

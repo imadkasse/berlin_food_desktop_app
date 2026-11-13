@@ -12,7 +12,7 @@ import {
   assignableRoles,
   type Role,
 } from "@/lib/auth/permissions";
-import { updateUserRoleAction } from "@/features/users/actions";
+import { updateUserRole } from "@/features/users/mutations";
 import type { ProfileRow } from "@/types/app";
 
 export type ChangeRoleDialogProps = {
@@ -79,7 +79,7 @@ export function ChangeRoleDialog({
 
     setSubmitting(true);
     try {
-      const result = await updateUserRoleAction({ id: user.id, role });
+      const result = await updateUserRole({ id: user.id, role });
 
       if (result.ok) {
         onChanged(result.message);

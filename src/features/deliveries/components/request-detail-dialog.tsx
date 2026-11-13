@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { IconAlert, IconCalendar, IconCheck, IconClock, IconClose, IconMail, IconPhone } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { DeliveryStatusBadge } from "@/components/dashboard/status-badge";
 import { formatDateTime, formatPhone, formatRelativeTime } from "@/lib/format";
-import { getDeliveryRequestDetailAction } from "@/features/deliveries/actions";
+import { useDeliveryDetail } from "@/features/deliveries/hooks";
 import type { DeliveryRequestDetail } from "@/features/deliveries/types";
 import type { DeliveryRequestRow } from "@/types/app";
 import { CourierAccountCard } from "./courier-account-card";
@@ -41,37 +41,24 @@ export function RequestDetailDialog({
   onApprove,
   onReject,
 }: RequestDetailDialogProps) {
-  const [state, setState] = useState<DetailState>({ status: "loading" });
   const [promoteCourier, setPromoteCourier] = useState(false);
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
 
-  useEffect(() => {
-    if (!open || !request) return;
+  const {
+    detail,
+    isLoading,
+    error,
+    refetch: refetchDetail,
+  } = useDeliveryDetail(open && request ? request.id : null);
 
-    let cancelled = false;
-    setState({ status: "loading" });
+  const state: DetailState = isLoading
+    ? { status: "loading" }
+    : error
+      ? { status: "error", error }
+      : detail
+        ? { status: "ready", detail }
+        : { status: "loading" };
 
-    void getDeliveryRequestDetailAction({ id: request.id }).then((result) => {
-      if (cancelled) return;
-
-      if (result.ok) {
-        setState({ status: "ready", detail: result.detail });
-      } else {
-        setState({ status: "error", error: result.error });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, request, reloadToken]);
-
-  useEffect(() => {
-    if (open) setPromoteCourier(false);
-  }, [open]);
-
-  const detail = state.status === "ready" ? state.detail : null;
   const matchedProfile = detail?.match?.profile ?? null;
   const canPromote =
     canWrite &&
@@ -85,7 +72,7 @@ export function RequestDetailDialog({
     try {
       const succeeded = await onApprove(request.id, promoteCourier);
       // Refresh the panel so the new status is visible immediately.
-      if (succeeded) setReloadToken((token) => token + 1);
+      if (succeeded) await refetchDetail();
     } finally {
       setBusy(null);
     }
@@ -96,7 +83,7 @@ export function RequestDetailDialog({
     setBusy("reject");
     try {
       const succeeded = await onReject(request.id);
-      if (succeeded) setReloadToken((token) => token + 1);
+      if (succeeded) await refetchDetail();
     } finally {
       setBusy(null);
     }

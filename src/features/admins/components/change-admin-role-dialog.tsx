@@ -12,7 +12,7 @@ import {
   assignableRoles,
   type Role,
 } from "@/lib/auth/permissions";
-import { changeAdminRoleAction } from "@/features/admins/actions";
+import { changeAdminRole } from "@/features/admins/mutations";
 import type { ProfileRow } from "@/types/app";
 
 export type ChangeAdminRoleDialogProps = {
@@ -38,7 +38,7 @@ export type ChangeAdminRoleDialogProps = {
  * The account of the signed-in administrator is protected: only the role
  * «مدير أعلى» stays selectable, so nobody can lock the platform out of the
  * superadmin tier. The guard itself lives on the server
- * (`src/features/admins/actions.ts`) — this is only an affordance.
+ * (the `admin-set-role` Edge Function) — this is only an affordance.
  */
 export function ChangeAdminRoleDialog({
   open,
@@ -89,7 +89,7 @@ export function ChangeAdminRoleDialog({
 
     setSubmitting(true);
     try {
-      const result = await changeAdminRoleAction({ id: user.id, role });
+      const result = await changeAdminRole({ id: user.id, role });
 
       if (result.ok) {
         onChanged(result.message);

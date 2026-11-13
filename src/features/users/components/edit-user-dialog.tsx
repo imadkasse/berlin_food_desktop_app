@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { VEHICLE_LABELS } from "@/types/app";
-import { updateUserAction } from "@/features/users/actions";
+import { updateUser } from "@/features/users/mutations";
 import { validateUpdateUserInput } from "@/features/users/validation";
 import type { UpdateUserFieldErrors } from "@/features/users/validation";
 import type { ProfileRow } from "@/types/app";
@@ -128,7 +128,7 @@ export function EditUserDialog({
 
     setSubmitting(true);
     try {
-      const result = await updateUserAction({
+      const result = await updateUser({
         id: user.id,
         fullName: form.fullName,
         email: form.email,

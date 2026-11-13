@@ -40,7 +40,7 @@ export type UsersTableProps = {
   onEdit: (user: ProfileRow) => void;
   onChangeRole: (user: ProfileRow) => void;
   onDelete: (user: ProfileRow) => void;
-  onViewDetails: (user: ProfileRow) => void;
+  onViewDetails: (userId: string) => void;
   onClearFilters: () => void;
 };
 
@@ -195,7 +195,7 @@ export function UsersTable({
                   items={[
                     {
                       label: "عرض التفاصيل",
-                      onSelect: () => onViewDetails(row),
+                      onSelect: () => onViewDetails(row.id),
                       icon: <IconEye size={16} />,
                     },
                     // The privileged actions are hidden for administrators who

@@ -3,12 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "6mb",
-    },
-  },
-  output: 'export',
+  output: "export",
   images: {
     unoptimized: true,
   },

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { IconPencil, IconShield, IconTrash } from "@/components/ui/icons";
@@ -9,7 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { Section } from "@/components/dashboard/section";
 import type { Role } from "@/lib/auth/permissions";
-import { deleteUserAction } from "@/features/users/actions";
+import { deleteUser } from "@/features/users/mutations";
 import type { ProfileRow } from "@/types/app";
 import { ChangeRoleDialog } from "./change-role-dialog";
 import { EditUserDialog } from "./edit-user-dialog";
@@ -24,6 +23,10 @@ export type UserDetailActionsProps = {
   canManageRoles: boolean;
   /** `true` when the administrator may delete the account. */
   canDelete: boolean;
+  /** Called after the account was edited or its role changed. */
+  onUpdated?: () => void | Promise<void>;
+  /** Called after the account was deleted. */
+  onDeleted?: () => void | Promise<void>;
 };
 
 /**
@@ -31,6 +34,9 @@ export type UserDetailActionsProps = {
  *
  * Every action the signed-in administrator may **not** perform is omitted
  * entirely rather than shown as a disabled control.
+ *
+ * The mutations run through the Edge Functions, which re-assert the caller's
+ * permissions server-side; the flags above are only affordances.
  */
 export function UserDetailActions({
   user,
@@ -38,9 +44,10 @@ export function UserDetailActions({
   canWrite,
   canManageRoles,
   canDelete,
+  onUpdated,
+  onDeleted,
 }: UserDetailActionsProps) {
   const toast = useToast();
-  const router = useRouter();
 
   const [editOpen, setEditOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
@@ -49,12 +56,11 @@ export function UserDetailActions({
   const displayName = user.full_name ?? "مستخدم بلا اسم";
 
   const handleDelete = async () => {
-    const result = await deleteUserAction({ id: user.id });
+    const result = await deleteUser({ id: user.id });
 
     if (result.ok) {
       toast.success(result.message);
-      router.push("/dashboard/users");
-      router.refresh();
+      await onDeleted?.();
     } else {
       toast.error(result.error);
     }
@@ -113,7 +119,7 @@ export function UserDetailActions({
         user={user}
         onSaved={(message) => {
           toast.success(message);
-          router.refresh();
+          void onUpdated?.();
         }}
         onError={(message) => toast.error(message)}
       />
@@ -125,7 +131,7 @@ export function UserDetailActions({
         currentRole={currentRole}
         onChanged={(message) => {
           toast.success(message);
-          router.refresh();
+          void onUpdated?.();
         }}
         onError={(message) => toast.error(message)}
       />

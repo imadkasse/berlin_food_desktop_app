@@ -3,11 +3,11 @@ import type { CategoryRow, MenuItemRow } from "@/types/app";
 /**
  * Shared types for the Menu feature.
  *
- * This module is intentionally dependency-free (no `server-only`) so it can be
- * imported from both server components and client components.
+ * This module is intentionally dependency-free so it can be imported from any
+ * client component without pulling in server APIs.
  */
 
-/** Result returned by every menu server action. */
+/** Result returned by every menu mutation. */
 export type ActionResult =
   | { ok: true; message: string; url?: string }
   | { ok: false; error: string };

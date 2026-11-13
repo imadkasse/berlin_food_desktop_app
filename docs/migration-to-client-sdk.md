@@ -1,6 +1,6 @@
 # Migration: Server Actions → Supabase Client SDK (static export)
 
-> Status: **Planned** · Updated: 2026-11-13
+> Status: **In progress** — Phases 0–3 complete, Phase 4 pending · Updated: 2026-11-13
 > Owner: Berlin Food Admin Dashboard (Tauri + Next.js + Supabase)
 
 ## 0. Goal & decisions
@@ -72,12 +72,12 @@
 - [x] Convert `orders/page.tsx` and dashboard `page.tsx` to client components.
 
 ### Phase 3 — Users + Admins + Deliveries (parallel)
-- [ ] `features/users/hooks.ts` — `useUsers`, `useUserCounts`, `useUserById`.
-- [ ] `features/admins/hooks.ts` — `useAdmins`, `useAdminCounts`.
-- [ ] `features/deliveries/hooks.ts` — `useDeliveryRequests`, `useDeliveryStats`, `useDeliveryDetail`.
-- [ ] Move user detail into an in-page drawer; delete `users/[id]/page.tsx`.
-- [ ] Create `admin-create-user`, `admin-update-user`, `admin-set-role`, `admin-delete-user`, `admin-approve-delivery` Edge Functions.
-- [ ] Wire user/admin/delivery mutations to `invoke("admin-*")`.
+- [x] `features/users/hooks.ts` — `useUsers`, `useUserCounts`, `useUserById`.
+- [x] `features/admins/hooks.ts` — `useAdmins`, `useAdminCounts`.
+- [x] `features/deliveries/hooks.ts` — `useDeliveryRequests`, `useDeliveryStats`, `useDeliveryDetail`.
+- [x] Move user detail into an in-page drawer; delete `users/[id]/page.tsx`.
+- [x] Create `admin-create-user`, `admin-update-user`, `admin-set-role`, `admin-delete-user`, `admin-approve-delivery` Edge Functions.
+- [x] Wire user/admin/delivery mutations to `invoke("admin-*")`.
 
 ### Phase 4 — Static-export sweep (final)
 - [ ] Remove `experimental.serverActions` from `next.config.ts`.
@@ -92,18 +92,20 @@
 - [x] `src/components/dashboard/session-hydrator.tsx` (deleted in Phase 0).
 - [x] `src/features/menu/actions.ts`, `src/features/menu/queries.ts`, `src/services/menu.ts`, `src/features/menu/database.types.ts`, `src/features/profile/actions.ts`, `src/services/profile.ts` (deleted in Phase 1).
 - [x] `src/app/dashboard/orders/[id]/page.tsx`, `src/app/dashboard/orders/[id]/not-found.tsx`, `src/app/dashboard/orders/[id]/loading.tsx`, `src/features/orders/actions.ts`, `src/features/orders/queries.ts`, `src/services/orders.ts`, `src/services/dashboard.ts` (deleted in Phase 2).
+- [x] `src/app/dashboard/users/[id]/` (route), `src/features/users/actions.ts`, `src/features/users/queries.ts`, `src/features/admins/actions.ts`, `src/features/admins/queries.ts`, `src/features/deliveries/actions.ts`, `src/features/deliveries/queries.ts`, `src/services/users.ts`, `src/services/deliveries.ts` (deleted in Phase 3).
 - [ ] `src/proxy.ts`, `src/lib/auth/guard.ts`, `src/lib/auth/session.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/admin.ts`, all remaining `src/features/*/actions.ts`, all remaining `src/features/*/queries.ts`, remaining `src/services/*.ts`, `src/app/dashboard/users/[id]/` route, `src/app/dashboard/orders/[id]/` route.
 
 ### New
 - [x] `supabase/functions/_shared/{cors,auth,permissions,rbac,types}.ts`, `supabase/functions/import_map.json`, `supabase/functions/verify-session/index.ts`, `supabase/migrations/20261113000001_menu_images_storage_policies.sql`, `supabase/migrations/20261113000002_profiles_email_hardening.sql`, `src/lib/api/edge.ts`, `src/lib/session/{types,AuthProvider,RequireAuth,hooks,index}.ts` (created in Phase 0).
 - [x] `src/features/menu/hooks.ts`, `src/features/menu/mutations.ts`, `src/features/profile/hooks.ts`, `src/features/profile/mutations.ts` (created in Phase 1).
 - [x] `src/features/orders/hooks.ts`, `src/features/orders/mutations.ts`, `src/features/orders/components/order-detail-drawer.tsx`, `src/features/dashboard/types.ts`, `src/features/dashboard/hooks.ts` (created in Phase 2).
-- [ ] `supabase/functions/{admin-create-user, admin-update-user, admin-set-role, admin-delete-user, admin-approve-delivery}`, remaining `src/features/*/hooks.ts`.
+- [x] `supabase/functions/{admin-create-user,admin-update-user,admin-set-role,admin-delete-user,admin-approve-delivery}/index.ts`, `supabase/functions/_shared/http.ts`, `supabase/functions/_shared/deliveries.ts`, `src/features/users/{constants,hooks,mutations}.ts`, `src/features/users/components/user-detail-drawer.tsx`, `src/features/admins/{hooks,mutations}.ts`, `src/features/deliveries/{utils,hooks,mutations}.ts` (created in Phase 3).
 
 ### Modified
 - [x] `src/stores/session.ts`, `src/app/layout.tsx`, `src/app/dashboard/layout.tsx` (modified in Phase 0).
 - [x] `src/app/dashboard/menu/page.tsx`, `src/features/menu/components/menu-view.tsx`, `src/features/menu/components/product-dialog.tsx`, `src/features/menu/components/categories-dialog.tsx`, `src/features/menu/components/image-uploader.tsx`, `src/features/menu/validation.ts`, `src/types/database.types.ts`, `src/app/dashboard/profile/page.tsx`, profile components in `src/features/profile/components/`, `src/features/profile/image.ts` (modified in Phase 1).
 - [x] `src/features/orders/utils.ts`, `src/app/dashboard/orders/page.tsx`, `src/features/orders/components/orders-view.tsx`, `src/features/orders/components/orders-table.tsx`, `src/features/orders/components/order-detail-actions.tsx`, `src/features/orders/components/status-dialog.tsx`, `src/app/dashboard/page.tsx` (modified in Phase 2).
+- [x] `src/app/dashboard/users/page.tsx`, `src/app/dashboard/admins/page.tsx`, `src/app/dashboard/delivery-requests/page.tsx`, `src/features/users/components/{users-view,users-table,user-detail-actions,user-availability-toggle,create-user-dialog,edit-user-dialog,change-role-dialog}.tsx`, `src/features/admins/components/{admins-view,create-admin-dialog,change-admin-role-dialog}.tsx`, `src/features/deliveries/components/{delivery-requests-view,create-request-dialog,request-detail-dialog}.tsx` (modified in Phase 3).
 - [ ] remaining `src/app/dashboard/*/page.tsx`, `next.config.ts`, client components that call `actions.ts` or `router.refresh()`.
 
 ## 5. Risks / verify during implementation

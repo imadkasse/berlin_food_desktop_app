@@ -14,7 +14,7 @@ import {
   isPrivilegedRole,
   type Role,
 } from "@/lib/auth/permissions";
-import { createUserAction } from "@/features/users/actions";
+import { createUser } from "@/features/users/mutations";
 import { validateCreateUserInput } from "@/features/users/validation";
 import type { CreateUserFieldErrors } from "@/features/users/validation";
 
@@ -50,9 +50,10 @@ const EMPTY_FORM: FormState = {
  * allowed to create (`assignableRoles`) — never a hard-coded list — and every
  * option carries the Arabic label of the role plus its one-line description.
  *
- * The account itself is created by the shared, audited
- * `createUserAction` (`src/features/users/actions.ts`), which re-checks the
- * role against the server-side session.
+ * The account itself is created by the shared `createUser` mutation
+ * (`src/features/users/mutations.ts`), which invokes the `admin-create-user`
+ * Edge Function; that function re-checks the role against the server-side
+ * session.
  */
 export function CreateAdminDialog({
   open,
@@ -121,7 +122,7 @@ export function CreateAdminDialog({
 
     setSubmitting(true);
     try {
-      const result = await createUserAction({
+      const result = await createUser({
         fullName: validation.data.fullName,
         email: validation.data.email,
         phoneNumber: validation.data.phoneNumber,

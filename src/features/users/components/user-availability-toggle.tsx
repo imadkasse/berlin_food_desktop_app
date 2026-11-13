@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
-import { setUserAvailabilityAction } from "@/features/users/actions";
+import { setUserAvailability } from "@/features/users/mutations";
 
 export type UserAvailabilityToggleProps = {
   id: string;
@@ -13,34 +12,44 @@ export type UserAvailabilityToggleProps = {
   available: boolean;
   /** `true` when the administrator may change the availability. */
   canWrite: boolean;
+  /** Called after the flag was written successfully. */
+  onChanged?: () => void | Promise<void>;
 };
 
 /**
  * «حالة التوفّر» — flips the availability of a delivery account.
  *
- * The write is authorised again on the server (`users.write`), so the switch
- * is only an affordance.
+ * The write goes through the browser SDK onto
+ * `profiles.availability_status`; RLS decides whether the signed-in
+ * administrator may touch the row, so the switch is only an affordance.
  */
 export function UserAvailabilityToggle({
   id,
   available,
   canWrite,
+  onChanged,
 }: UserAvailabilityToggleProps) {
   const toast = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [value, setValue] = useState(available);
+
+  // Follow the refreshed row after the drawer (or the list) reloads.
+  useEffect(() => {
+    setValue(available);
+  }, [available]);
 
   const handleChange = (next: boolean) => {
     const previous = value;
     setValue(next);
 
     startTransition(async () => {
-      const result = await setUserAvailabilityAction({ id, available: next });
+      const result = await setUserAvailability({ id, available: next });
 
       if (result.ok) {
         toast.success(result.message);
-        router.refresh();
+        // Keep the local switch in sync with the refreshed row.
+        setValue(next);
+        await onChanged?.();
         return;
       }
 

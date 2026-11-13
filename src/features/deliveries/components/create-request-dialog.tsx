@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createDeliveryRequestAction } from "@/features/deliveries/actions";
+import { createDeliveryRequest } from "@/features/deliveries/mutations";
 import { validateDeliveryRequestInput } from "@/features/deliveries/validation";
 import type { DeliveryRequestFieldErrors } from "@/features/deliveries/validation";
 
@@ -75,7 +75,7 @@ export function CreateRequestDialog({
 
     setSubmitting(true);
     try {
-      const result = await createDeliveryRequestAction({
+      const result = await createDeliveryRequest({
         fullName: form.fullName,
         phoneNumber: form.phoneNumber,
         email: form.email || null,

@@ -1,72 +1,145 @@
-import { Suspense } from "react";
+"use client";
 
-import { assertPermission } from "@/lib/auth/guard";
-import { requireSession } from "@/lib/auth/session";
-import { DeliveryRequestsView } from "@/features/deliveries/components/delivery-requests-view";
+import { Suspense, useEffect, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IconAlert } from "@/components/ui/icons";
 import { DeliveryRequestsSkeleton } from "@/features/deliveries/components/delivery-requests-skeleton";
+import { DeliveryRequestsView } from "@/features/deliveries/components/delivery-requests-view";
 import {
-  listDeliveryRequests,
-  loadDeliveryStats,
-} from "@/features/deliveries/queries";
+  useDeliveryRequests,
+  useDeliveryStats,
+} from "@/features/deliveries/hooks";
 import { parseDeliveryFilters } from "@/features/deliveries/validation";
-import { DELIVERY_PAGE_SIZE } from "@/services/deliveries";
-
-type DeliveryRequestsPageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
+import { DELIVERY_PAGE_SIZE } from "@/features/deliveries/utils";
+import { usePermission } from "@/hooks/use-permission";
 
 /**
- * «طلبات التوصيل» — the server entry point of the page.
+ * «طلبات التوصيل» — the client entry point of the page.
  *
- * Every request is authorised first: an authenticated session is required and
- * the `deliveries.read` permission is asserted before any data is loaded.
- * The queries run with the service-role client, so admins always see the full
- * list of delivery requests (never a filtered subset of their own rows).
- *
- * The filters live in the URL, which keeps every view shareable and lets the
- * browser back / forward buttons work as expected.
+ * Every read goes through the browser Supabase client, so Row Level Security
+ * decides what the signed-in admin may see. The filters live in the URL, which
+ * keeps every view shareable and lets the browser back / forward buttons work
+ * as expected.
  */
-export default async function DeliveryRequestsPage({
-  searchParams,
-}: DeliveryRequestsPageProps) {
-  const session = await requireSession();
-  await assertPermission("deliveries.read");
+function DeliveryRequestsPageContent() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const params = await searchParams;
-  const filters = parseDeliveryFilters(params, DELIVERY_PAGE_SIZE);
+  const filters = useMemo(
+    () =>
+      parseDeliveryFilters(
+        Object.fromEntries(searchParams.entries()),
+        DELIVERY_PAGE_SIZE,
+      ),
+    [searchParams],
+  );
 
-  const [page, stats] = await Promise.all([
-    listDeliveryRequests(filters),
-    loadDeliveryStats(),
-  ]);
+  const {
+    rows,
+    count,
+    page,
+    pageSize,
+    pageCount,
+    isLoading: requestsLoading,
+    error: requestsError,
+    refetch: refetchRequests,
+  } = useDeliveryRequests(filters);
 
-  let rows = page.rows;
-  let activePage = page.page;
-  let pageCount = Math.max(1, Math.ceil(page.count / page.pageSize));
+  const {
+    stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useDeliveryStats();
 
-  // The last page may have disappeared (e.g. a request was deleted) — fall
-  // back to the last existing page instead of showing an empty table.
-  if (rows.length === 0 && page.count > 0 && activePage > pageCount) {
-    const clamped = await listDeliveryRequests({ ...filters, page: pageCount });
-    rows = clamped.rows;
-    activePage = clamped.page;
-    pageCount = Math.max(1, Math.ceil(clamped.count / clamped.pageSize));
+  const canWrite = usePermission("deliveries.write");
+
+  const isLoading = requestsLoading || statsLoading;
+  const error = requestsError ?? statsError;
+
+  const refetch = async () => {
+    await Promise.all([refetchRequests(), refetchStats()]);
+  };
+
+  // Keep the URL in sync when the hook has to clamp to the last existing page.
+  useEffect(() => {
+    if (page === filters.page) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (page === 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(page));
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [page, filters.page, pathname, router, searchParams]);
+
+  if (isLoading && rows.length === 0) {
+    return (
+      <div dir="rtl" className="flex flex-col gap-6">
+        <DeliveryRequestsSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div dir="rtl" className="flex flex-col gap-6">
+        <div className="rounded-lg bg-surface">
+          <EmptyState
+            icon={<IconAlert size={22} />}
+            title="تعذّر تحميل طلبات التوصيل"
+            description={error}
+            action={
+              <Button variant="secondary" onClick={refetch}>
+                إعادة المحاولة
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div dir="rtl" className="flex flex-col gap-6">
-      <Suspense fallback={<DeliveryRequestsSkeleton />}>
-        <DeliveryRequestsView
-          rows={rows}
-          total={page.count}
-          page={activePage}
-          pageCount={pageCount}
-          pageSize={page.pageSize}
-          stats={stats}
-          filters={{ ...filters, page: activePage }}
-          canWrite={session.permissions.has("deliveries.write")}
-        />
-      </Suspense>
+      <DeliveryRequestsView
+        rows={rows}
+        total={count}
+        page={page}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        stats={stats}
+        filters={{ ...filters, page }}
+        canWrite={canWrite}
+        onRefresh={refetch}
+      />
     </div>
+  );
+}
+
+/**
+ * `useSearchParams()` forces a client-side render bailout, so the page content
+ * must live inside a `<Suspense>` boundary for `output: 'export'`.
+ */
+export default function DeliveryRequestsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div dir="rtl" className="flex flex-col gap-6">
+          <DeliveryRequestsSkeleton />
+        </div>
+      }
+    >
+      <DeliveryRequestsPageContent />
+    </Suspense>
   );
 }
