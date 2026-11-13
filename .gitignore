@@ -20,8 +20,6 @@ dist-ssr
 scripts
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -39,5 +37,11 @@ supabase/.temp
 supabase/.branches
 
 
-# build 
-out/*
+# Build output
+/out
+
+# Documentation (local only)
+/docs
+
+# Editor
+/.vscode
