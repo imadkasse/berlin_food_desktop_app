@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-
 import { Button } from "@/components/ui/button";
 import { IconPackage } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
@@ -19,10 +17,12 @@ export type OrderDetailActionsProps = {
   /**
    * `true` when the signed-in administrator holds `orders.write`.
    *
-   * The flag is computed on the server — the client never derives a role on
-   * its own — and the button is hidden entirely when it is `false`.
+   * The authoritative check happens through RLS; this flag is a UI
+   * affordance only and hides the action when it is `false`.
    */
   canWrite: boolean;
+  /** Called after a successful status change so the parent can refresh. */
+  onStatusUpdated?: () => void;
 };
 
 /**
@@ -37,16 +37,16 @@ export function OrderDetailActions({
   orderReference,
   currentStatus,
   canWrite,
+  onStatusUpdated,
 }: OrderDetailActionsProps) {
   const toast = useToast();
-  const router = useRouter();
 
   const [open, setOpen] = useState(false);
 
   const handleUpdated = (result: ActionResult) => {
     if (result.ok) {
       toast.success(result.message);
-      router.refresh();
+      onStatusUpdated?.();
       return;
     }
 

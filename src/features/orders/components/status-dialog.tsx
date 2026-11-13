@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { IconAlert, IconCheck } from "@/components/ui/icons";
 import { ORDER_STATUS_LABELS } from "@/types/app";
-import { updateOrderStatusAction } from "@/features/orders/actions";
+import { updateOrderStatus } from "@/features/orders/mutations";
 import type { ActionResult } from "@/features/orders/types";
 
 /**
@@ -79,7 +79,7 @@ export function StatusDialog({
   const persist = async (status: string) => {
     setSaving(true);
     try {
-      const result = await updateOrderStatusAction({ orderId, status });
+      const result = await updateOrderStatus({ orderId, status });
 
       // The dialog never toasts on its own: the consumer owns the feedback so
       // the same message is never shown twice.

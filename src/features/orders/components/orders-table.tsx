@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -36,6 +34,8 @@ export type OrdersTableProps = {
   pending: boolean;
   onChangeStatus: (order: OrderListRow) => void;
   onClearFilters: () => void;
+  /** Opens the detail drawer for the given order id. */
+  onViewDetails: (orderId: string) => void;
 };
 
 /**
@@ -51,9 +51,8 @@ export function OrdersTable({
   pending,
   onChangeStatus,
   onClearFilters,
+  onViewDetails,
 }: OrdersTableProps) {
-  const router = useRouter();
-
   if (rows.length === 0) {
     return (
       <div className="rounded-lg bg-surface">
@@ -184,7 +183,7 @@ export function OrdersTable({
                       {
                         label: "عرض التفاصيل",
                         icon: <IconEye size={16} />,
-                        onSelect: () => router.push(`/dashboard/orders/${order.id}`),
+                        onSelect: () => onViewDetails(order.id),
                       },
                       ...(canWrite
                         ? [

@@ -22,6 +22,7 @@ import type {
 import { OrdersFilters } from "./orders-filters";
 import { OrdersTable } from "./orders-table";
 import { StatusDialog } from "./status-dialog";
+import { OrderDetailDrawer } from "./order-detail-drawer";
 
 export type OrdersViewProps = {
   rows: OrderListRow[];
@@ -32,6 +33,7 @@ export type OrdersViewProps = {
   stats: OrderStats;
   filters: OrderFilters;
   canWrite: boolean;
+  onRefresh: () => Promise<void> | void;
 };
 
 /** Debounce applied to the free-text search before it reaches the server. */
@@ -53,6 +55,7 @@ export function OrdersView({
   stats,
   filters,
   canWrite,
+  onRefresh,
 }: OrdersViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -67,6 +70,7 @@ export function OrdersView({
   const [sort, setSort] = useState<OrderSortOption>(filters.sort);
 
   const [statusTarget, setStatusTarget] = useState<OrderListRow | null>(null);
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const lastAppliedSearch = useRef(filters.q);
 
@@ -141,7 +145,7 @@ export function OrdersView({
 
   const handleRefresh = () => {
     startTransition(() => {
-      router.refresh();
+      void onRefresh();
     });
   };
 
@@ -222,6 +226,7 @@ export function OrdersView({
         pending={isPending}
         onChangeStatus={setStatusTarget}
         onClearFilters={handleClearFilters}
+        onViewDetails={setDetailOrderId}
       />
 
       {total > 0 ? (
@@ -249,12 +254,18 @@ export function OrdersView({
         onUpdated={(result) => {
           if (result.ok) {
             toast.success(result.message);
-            router.refresh();
+            void onRefresh();
             return;
           }
 
           toast.error(result.error);
         }}
+      />
+
+      <OrderDetailDrawer
+        orderId={detailOrderId}
+        onClose={() => setDetailOrderId(null)}
+        onStatusUpdated={onRefresh}
       />
     </div>
   );

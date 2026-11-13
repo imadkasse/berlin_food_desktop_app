@@ -66,10 +66,10 @@
 - [x] Convert `menu/page.tsx` and `profile/page.tsx` to client components; replace `router.refresh()` with local re-fetch.
 
 ### Phase 2 — Orders + Dashboard (parallel)
-- [ ] `features/orders/hooks.ts` — `useOrders`, `useOrderStats`, `useOrderDetail`.
-- [ ] Move order detail into an in-page drawer; delete `orders/[id]/page.tsx`.
-- [ ] `services/dashboard.ts` logic → `features/dashboard/hooks.ts` (browser SDK).
-- [ ] Convert `orders/page.tsx` and dashboard `page.tsx` to client components.
+- [x] `features/orders/hooks.ts` — `useOrders`, `useOrderStats`, `useOrderDetail`.
+- [x] Move order detail into an in-page drawer; delete `orders/[id]/page.tsx`.
+- [x] `services/dashboard.ts` logic → `features/dashboard/hooks.ts` (browser SDK).
+- [x] Convert `orders/page.tsx` and dashboard `page.tsx` to client components.
 
 ### Phase 3 — Users + Admins + Deliveries (parallel)
 - [ ] `features/users/hooks.ts` — `useUsers`, `useUserCounts`, `useUserById`.
@@ -91,16 +91,19 @@
 ### Delete
 - [x] `src/components/dashboard/session-hydrator.tsx` (deleted in Phase 0).
 - [x] `src/features/menu/actions.ts`, `src/features/menu/queries.ts`, `src/services/menu.ts`, `src/features/menu/database.types.ts`, `src/features/profile/actions.ts`, `src/services/profile.ts` (deleted in Phase 1).
+- [x] `src/app/dashboard/orders/[id]/page.tsx`, `src/app/dashboard/orders/[id]/not-found.tsx`, `src/app/dashboard/orders/[id]/loading.tsx`, `src/features/orders/actions.ts`, `src/features/orders/queries.ts`, `src/services/orders.ts`, `src/services/dashboard.ts` (deleted in Phase 2).
 - [ ] `src/proxy.ts`, `src/lib/auth/guard.ts`, `src/lib/auth/session.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/admin.ts`, all remaining `src/features/*/actions.ts`, all remaining `src/features/*/queries.ts`, remaining `src/services/*.ts`, `src/app/dashboard/users/[id]/` route, `src/app/dashboard/orders/[id]/` route.
 
 ### New
 - [x] `supabase/functions/_shared/{cors,auth,permissions,rbac,types}.ts`, `supabase/functions/import_map.json`, `supabase/functions/verify-session/index.ts`, `supabase/migrations/20261113000001_menu_images_storage_policies.sql`, `supabase/migrations/20261113000002_profiles_email_hardening.sql`, `src/lib/api/edge.ts`, `src/lib/session/{types,AuthProvider,RequireAuth,hooks,index}.ts` (created in Phase 0).
 - [x] `src/features/menu/hooks.ts`, `src/features/menu/mutations.ts`, `src/features/profile/hooks.ts`, `src/features/profile/mutations.ts` (created in Phase 1).
+- [x] `src/features/orders/hooks.ts`, `src/features/orders/mutations.ts`, `src/features/orders/components/order-detail-drawer.tsx`, `src/features/dashboard/types.ts`, `src/features/dashboard/hooks.ts` (created in Phase 2).
 - [ ] `supabase/functions/{admin-create-user, admin-update-user, admin-set-role, admin-delete-user, admin-approve-delivery}`, remaining `src/features/*/hooks.ts`.
 
 ### Modified
 - [x] `src/stores/session.ts`, `src/app/layout.tsx`, `src/app/dashboard/layout.tsx` (modified in Phase 0).
 - [x] `src/app/dashboard/menu/page.tsx`, `src/features/menu/components/menu-view.tsx`, `src/features/menu/components/product-dialog.tsx`, `src/features/menu/components/categories-dialog.tsx`, `src/features/menu/components/image-uploader.tsx`, `src/features/menu/validation.ts`, `src/types/database.types.ts`, `src/app/dashboard/profile/page.tsx`, profile components in `src/features/profile/components/`, `src/features/profile/image.ts` (modified in Phase 1).
+- [x] `src/features/orders/utils.ts`, `src/app/dashboard/orders/page.tsx`, `src/features/orders/components/orders-view.tsx`, `src/features/orders/components/orders-table.tsx`, `src/features/orders/components/order-detail-actions.tsx`, `src/features/orders/components/status-dialog.tsx`, `src/app/dashboard/page.tsx` (modified in Phase 2).
 - [ ] remaining `src/app/dashboard/*/page.tsx`, `next.config.ts`, client components that call `actions.ts` or `router.refresh()`.
 
 ## 5. Risks / verify during implementation

@@ -1,72 +1,123 @@
-import { Suspense } from "react";
+"use client";
 
-import { assertPermission } from "@/lib/auth/guard";
-import { can } from "@/lib/auth/permissions";
-import { requireSession } from "@/lib/auth/session";
+import { useMemo, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IconAlert } from "@/components/ui/icons";
 import { OrdersView } from "@/features/orders/components/orders-view";
-import { listOrders, loadOrderStats } from "@/features/orders/queries";
+import { useOrders, useOrderStats } from "@/features/orders/hooks";
 import { parseOrderFilters } from "@/features/orders/validation";
-import { ORDERS_PAGE_SIZE } from "@/services/orders";
+import { ORDERS_PAGE_SIZE } from "@/features/orders/utils";
+import { usePermission } from "@/hooks/use-permission";
 import { OrdersSkeleton } from "./loading";
 
-export const dynamic = "force-dynamic";
-
-type OrdersPageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
-
 /**
- * «الطلبات» — the server entry point of the page.
+ * «الطلبات» — the client entry point of the orders page.
  *
- * Every request is authorised first: an authenticated session is required and
- * the `orders.read` permission is asserted before any data is loaded, so an
- * unauthorised account can never reach the orders data (the queries run with
- * the service-role client).
- *
- * The filters live in the URL, which keeps every view shareable and lets the
- * browser back / forward buttons work as expected.
+ * Filters live in the URL so every view remains shareable. All reads, stats,
+ * and mutations now flow through the browser Supabase client; the server-side
+ * `orders` actions/queries/service have been removed.
  */
-export default async function OrdersPage({ searchParams }: OrdersPageProps) {
-  const session = await requireSession();
-  await assertPermission("orders.read");
+export default function OrdersPage() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const params = await searchParams;
-  const filters = parseOrderFilters(params, ORDERS_PAGE_SIZE);
+  const filters = useMemo(
+    () =>
+      parseOrderFilters(
+        Object.fromEntries(searchParams.entries()),
+        ORDERS_PAGE_SIZE,
+      ),
+    [searchParams],
+  );
 
-  const [page, stats] = await Promise.all([
-    listOrders(filters),
-    loadOrderStats(),
-  ]);
+  const {
+    rows,
+    count,
+    page,
+    pageSize,
+    pageCount,
+    isLoading: ordersLoading,
+    error: ordersError,
+    refetch: refetchOrders,
+  } = useOrders(filters);
 
-  let rows = page.rows;
-  let total = page.count;
-  let activePage = page.page;
-  let pageCount = Math.max(1, Math.ceil(page.count / page.pageSize));
+  const {
+    stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useOrderStats();
 
-  // The last page may have disappeared (e.g. an order was deleted) — fall
-  // back to the last existing page instead of showing an empty table.
-  if (rows.length === 0 && page.count > 0 && activePage > pageCount) {
-    const clamped = await listOrders({ ...filters, page: pageCount });
-    rows = clamped.rows;
-    total = clamped.count;
-    activePage = clamped.page;
-    pageCount = Math.max(1, Math.ceil(clamped.count / clamped.pageSize));
+  const canWrite = usePermission("orders.write");
+
+  const isLoading = ordersLoading || statsLoading;
+  const error = ordersError ?? statsError;
+
+  const refetch = async () => {
+    await Promise.all([refetchOrders(), refetchStats()]);
+  };
+
+  // Keep the URL in sync when the hook has to clamp to the last existing page.
+  useEffect(() => {
+    if (page === filters.page) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (page === 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(page));
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [page, filters.page, pathname, router, searchParams]);
+
+  if (isLoading && rows.length === 0) {
+    return (
+      <div dir="rtl" className="flex flex-col gap-6">
+        <OrdersSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div dir="rtl" className="flex flex-col gap-6">
+        <div className="rounded-lg bg-surface">
+          <EmptyState
+            icon={<IconAlert size={22} />}
+            title="تعذّر تحميل الطلبات"
+            description={error}
+            action={
+              <Button variant="secondary" onClick={refetch}>
+                إعادة المحاولة
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div dir="rtl" className="flex flex-col gap-6">
-      <Suspense fallback={<OrdersSkeleton />}>
-        <OrdersView
-          rows={rows}
-          total={total}
-          page={activePage}
-          pageCount={pageCount}
-          pageSize={page.pageSize}
-          stats={stats}
-          filters={{ ...filters, page: activePage }}
-          canWrite={can(session.role, "orders.write")}
-        />
-      </Suspense>
+      <OrdersView
+        rows={rows}
+        total={count}
+        page={page}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        stats={stats}
+        filters={{ ...filters, page }}
+        canWrite={canWrite}
+        onRefresh={refetch}
+      />
     </div>
   );
 }

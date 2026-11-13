@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -17,6 +19,7 @@ import {
   IconUsers,
   IconWallet,
 } from "@/components/ui/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -25,39 +28,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime, formatNumber, formatPrice, shortId } from "@/lib/format";
-import { assertPermission } from "@/lib/auth/guard";
-import { requireSession } from "@/lib/auth/session";
 import {
-  getDashboardStats,
-  getRecentDeliveryRequests,
-  getRecentOrders,
-  getTopMenuItems,
-} from "@/services/dashboard";
+  useDashboardStats,
+  useRecentDeliveryRequests,
+  useRecentOrders,
+  useTopMenuItems,
+} from "@/features/dashboard/hooks";
+import { formatDateTime, formatNumber, formatPrice, shortId } from "@/lib/format";
+import { useSessionStore } from "@/stores/session";
 
-export const dynamic = "force-dynamic";
+export default function DashboardHomePage() {
+  const user = useSessionStore((state) => state.user);
 
-export default async function DashboardHomePage() {
-  const session = await requireSession();
+  const stats = useDashboardStats();
+  const recentOrders = useRecentOrders(5);
+  const deliveryRequests = useRecentDeliveryRequests(5);
+  const topItems = useTopMenuItems(5);
 
-  // The dashboard reads the orders, the menu and the delivery data — the
-  // `orders.read` permission is asserted before any of it is loaded.
-  await assertPermission("orders.read");
+  const isLoading =
+    stats.isLoading ||
+    recentOrders.isLoading ||
+    deliveryRequests.isLoading ||
+    topItems.isLoading;
 
-  const [stats, recentOrders, deliveryRequests, topItems] = await Promise.all([
-    getDashboardStats(),
-    getRecentOrders(5),
-    getRecentDeliveryRequests(5),
-    getTopMenuItems(5),
-  ]);
+  const error =
+    stats.error ??
+    recentOrders.error ??
+    deliveryRequests.error ??
+    topItems.error;
 
-  const firstName = (session.profile.full_name ?? "مشرف").split(" ")[0];
+  const firstName = (user?.full_name ?? "مشرف").split(" ")[0];
   const today = new Intl.DateTimeFormat("ar", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(new Date());
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return <DashboardErrorState />;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -78,28 +92,28 @@ export default async function DashboardHomePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="طلبات اليوم"
-          value={formatNumber(stats.todayOrders)}
+          value={formatNumber(stats.data.todayOrders)}
           hint="الطلبات المسجّلة منذ منتصف الليل"
           icon={<IconReceipt size={18} />}
           tone="default"
         />
         <StatCard
           label="إيراد اليوم"
-          value={formatPrice(stats.todayRevenue)}
+          value={formatPrice(stats.data.todayRevenue)}
           hint="إجمالي الطلبات غير الملغاة"
           icon={<IconWallet size={18} />}
           tone="success"
         />
         <StatCard
           label="الطلبات قيد التحضير"
-          value={formatNumber(stats.preparingOrders)}
+          value={formatNumber(stats.data.preparingOrders)}
           hint="طلبات في المطبخ الآن"
           icon={<IconPackage size={18} />}
           tone="warning"
         />
         <StatCard
           label="مندوبون متاحون"
-          value={formatNumber(stats.availableDeliveries)}
+          value={formatNumber(stats.data.availableDeliveries)}
           hint="مندوبو توصيل جاهزون لاستلام الطلبات"
           icon={<IconBike size={18} />}
           tone="info"
@@ -122,7 +136,7 @@ export default async function DashboardHomePage() {
           }
           contentClassName="p-0"
         >
-          {recentOrders.length === 0 ? (
+          {recentOrders.data.length === 0 ? (
             <EmptyState
               icon={<IconReceipt size={22} />}
               title="لا توجد طلبات بعد"
@@ -140,7 +154,7 @@ export default async function DashboardHomePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentOrders.map((order) => (
+                {recentOrders.data.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="tabular font-semibold text-foreground">
                       {shortId(order.id)}
@@ -175,7 +189,7 @@ export default async function DashboardHomePage() {
           }
           contentClassName="p-0"
         >
-          {deliveryRequests.length === 0 ? (
+          {deliveryRequests.data.length === 0 ? (
             <EmptyState
               icon={<IconUsers size={22} />}
               title="لا توجد طلبات توصيل"
@@ -183,7 +197,7 @@ export default async function DashboardHomePage() {
             />
           ) : (
             <ul className="divide-y divide-line/70">
-              {deliveryRequests.map((request) => (
+              {deliveryRequests.data.map((request) => (
                 <li
                   key={request.id}
                   className="flex items-center justify-between gap-3 px-5 py-3.5"
@@ -218,7 +232,7 @@ export default async function DashboardHomePage() {
         }
         contentClassName="p-0"
       >
-        {topItems.length === 0 ? (
+        {topItems.data.length === 0 ? (
           <EmptyState
             icon={<IconPackage size={22} />}
             title="لا توجد مبيعات بعد"
@@ -234,7 +248,7 @@ export default async function DashboardHomePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topItems.map((item, index) => (
+              {topItems.data.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <span className="flex items-center gap-3">
@@ -318,6 +332,30 @@ export default async function DashboardHomePage() {
           </span>
         </Link>
       </div>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-8" aria-busy="true">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-5 w-72" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-[136px] rounded-lg" />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <Skeleton className="h-[320px] rounded-lg xl:col-span-2" />
+        <Skeleton className="h-[320px] rounded-lg" />
+      </div>
+
+      <Skeleton className="h-[280px] rounded-lg" />
     </div>
   );
 }

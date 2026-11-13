@@ -2,6 +2,7 @@ import type { Json } from "@/types/database.types";
 import type {
   OrderCustomerInfo,
   OrderItemInfo,
+  OrderPeriodFilter,
 } from "@/features/orders/types";
 
 /* -------------------------------------------------------------------------- */
@@ -239,4 +240,98 @@ export function itemsPreview(items: OrderItemInfo[]): string {
   if (names.length <= 2) return names.join("، ");
 
   return `${names.slice(0, 2).join("، ")} و${names.length - 2} أصناف أخرى`;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Server-side helpers                           */
+/* -------------------------------------------------------------------------- */
+
+/** Number of orders shown per page. */
+export const ORDERS_PAGE_SIZE = 20;
+
+/**
+ * Removes the characters that would break a PostgREST filter expression.
+ */
+function sanitizeSearchTerm(raw: string): string {
+  return raw
+    .replace(/[,()"\\*%]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * `true` when the term can only be a fragment of a UUID.
+ */
+function isUuidFragment(term: string): boolean {
+  return (
+    term.length >= 4 &&
+    term.length <= 32 &&
+    /^[0-9a-f]+$/.test(term) &&
+    /[0-9]/.test(term)
+  );
+}
+
+/** Formats a 32-character hex string back into the canonical UUID layout. */
+function toUuid(hex: string): string {
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
+}
+
+/**
+ * Builds the UUID range that covers every id starting with `prefix`.
+ */
+function uuidPrefixRange(prefix: string): { lo: string; hi: string } {
+  const hex = prefix.toLowerCase();
+  return {
+    lo: toUuid(hex + "0".repeat(32 - hex.length)),
+    hi: toUuid(hex + "f".repeat(32 - hex.length)),
+  };
+}
+
+/**
+ * Builds the PostgREST `or=(…)` expression for the free-text search.
+ *
+ * The returned string is the *inner* part of the expression.
+ */
+export function buildOrderSearchFilter(term: string): string | null {
+  const sanitized = sanitizeSearchTerm(term);
+  if (!sanitized) return null;
+
+  const branches: string[] = [];
+
+  const fragment = sanitized.replace(/[#\s-]/g, "");
+  if (isUuidFragment(fragment)) {
+    const { lo, hi } = uuidPrefixRange(fragment);
+    branches.push(`and(id.gte.${lo},id.lt.${hi})`);
+  }
+
+  branches.push(`customer->>full_name.ilike.*${sanitized}*`);
+
+  return branches.join(",");
+}
+
+/** The `created_at` cut-off for the «الفترة» filter, or `null` for «الكل». */
+export function orderPeriodCutoff(
+  period: OrderPeriodFilter,
+  now: Date = new Date(),
+): Date | null {
+  switch (period) {
+    case "today": {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    case "7d":
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case "30d":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case "all":
+    default:
+      return null;
+  }
 }

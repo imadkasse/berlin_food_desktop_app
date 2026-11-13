@@ -1,13 +1,15 @@
-import { notFound } from "next/navigation";
+"use client";
 
+import { useCallback, useEffect } from "react";
+
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { IconAlert, IconClose, IconReceipt, IconStar, IconTruck } from "@/components/ui/icons";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { OrderStatusBadge } from "@/components/dashboard/status-badge";
 import { UserAvatar } from "@/components/dashboard/user-avatar";
-import { IconStar, IconTruck } from "@/components/ui/icons";
-import { assertPermission } from "@/lib/auth/guard";
-import { can } from "@/lib/auth/permissions";
-import { requireSession } from "@/lib/auth/session";
 import {
   formatDateTime,
   formatNumber,
@@ -15,66 +17,172 @@ import {
   formatPrice,
 } from "@/lib/format";
 import { VEHICLE_LABELS } from "@/types/app";
-import { loadOrderDetail } from "@/features/orders/queries";
+import { usePermission } from "@/hooks/use-permission";
+import { useOrderDetail } from "@/features/orders/hooks";
 import {
   formatAddress,
   orderReference,
   pluralizeItems,
   totalItemCount,
 } from "@/features/orders/utils";
-import { CopyButton } from "@/features/orders/components/copy-button";
-import { OrderDetailActions } from "@/features/orders/components/order-detail-actions";
-import { OrderItemsTable } from "@/features/orders/components/order-items-table";
-import { OrderPipeline } from "@/features/orders/components/order-pipeline";
-import { OrderSummary } from "@/features/orders/components/order-summary";
+import { CopyButton } from "./copy-button";
+import { OrderDetailActions } from "./order-detail-actions";
+import { OrderItemsTable } from "./order-items-table";
+import { OrderPipeline } from "./order-pipeline";
+import { OrderSummary } from "./order-summary";
 
-type OrderDetailPageProps = {
-  params: Promise<{ id: string }>;
+export type OrderDetailDrawerProps = {
+  orderId: string | null;
+  onClose: () => void;
+  onStatusUpdated?: () => void;
 };
 
 /**
- * «تفاصيل الطلب» — the server entry point of the order detail page.
+ * «تفاصيل الطلب» — a slide-over drawer that replaces the dedicated detail
+ * route and keeps the admin on the orders list.
  *
- * The order is loaded with the service-role client after the session and the
- * `orders.read` permission have been verified. A missing order is not a
- * crash: the page renders the friendly not-found state.
+ * The drawer anchors to the logical end of the screen (left in RTL) and
+ * renders the same information previously shown on `/dashboard/orders/[id]`.
  */
-export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
-  const session = await requireSession();
-  await assertPermission("orders.read");
+export function OrderDetailDrawer({
+  orderId,
+  onClose,
+  onStatusUpdated,
+}: OrderDetailDrawerProps) {
+  const { detail, isLoading, error, refetch } = useOrderDetail(orderId);
+  const canWrite = usePermission("orders.write");
 
-  const { id } = await params;
-  const order = await loadOrderDetail(id);
+  useEffect(() => {
+    if (!orderId) return;
 
-  if (!order) {
-    notFound();
-  }
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  const reference = orderReference(order.id);
-  const customerName = order.customer.fullName ?? "عميل غير معروف";
-  const deliveryAddress = formatAddress(order.deliveryAddress);
-  const itemCount = totalItemCount(order.items);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
 
-  // The role is read from the server-side session — never from the client.
-  const canWrite = can(session.role, "orders.write");
+    window.addEventListener("keydown", handleKeyDown);
 
-  const courier = order.courier;
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [orderId, onClose]);
+
+  if (!orderId) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50"
+      dir="rtl"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-[rgba(43,33,27,0.45)]"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div
+        className="absolute inset-y-0 end-0 flex w-full max-w-3xl flex-col bg-background shadow-[0_0_50px_-12px_rgba(43,33,27,0.35)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          {isLoading ? (
+            <OrderDetailDrawerSkeleton />
+          ) : error ? (
+            <div className="rounded-lg bg-surface">
+              <EmptyState
+                icon={<IconAlert size={22} />}
+                title="تعذّر تحميل تفاصيل الطلب"
+                description={error}
+                action={
+                  <Button variant="secondary" onClick={refetch}>
+                    إعادة المحاولة
+                  </Button>
+                }
+              />
+            </div>
+          ) : !detail ? (
+            <div className="rounded-lg bg-surface">
+              <EmptyState
+                icon={<IconReceipt size={22} />}
+                title="الطلب غير موجود"
+                description="ربما تم حذفه أو أن الرابط غير صحيح."
+                action={
+                  <Button variant="secondary" onClick={onClose}>
+                    العودة إلى الطلبات
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <OrderDetailDrawerContent
+              detail={detail}
+              canWrite={canWrite}
+              refetch={refetch}
+              onStatusUpdated={onStatusUpdated}
+              onClose={onClose}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderDetailDrawerContent({
+  detail,
+  canWrite,
+  refetch,
+  onStatusUpdated,
+  onClose,
+}: {
+  detail: NonNullable<ReturnType<typeof useOrderDetail>["detail"]>;
+  canWrite: boolean;
+  refetch: () => Promise<void>;
+  onStatusUpdated?: () => Promise<void> | void;
+  onClose: () => void;
+}) {
+  const reference = orderReference(detail.id);
+  const customerName = detail.customer.fullName ?? "عميل غير معروف";
+  const deliveryAddress = formatAddress(detail.deliveryAddress);
+  const itemCount = totalItemCount(detail.items);
+
+  const courier = detail.courier;
   const vehicleLabel = courier?.vehicleType
     ? (VEHICLE_LABELS[courier.vehicleType] ?? courier.vehicleType)
     : null;
   const rating = courier?.deliveryRating ?? null;
   const ratingCount = courier?.numberRatings ?? 0;
 
+  const handleStatusUpdated = useCallback(async () => {
+    await refetch();
+    await onStatusUpdated?.();
+  }, [refetch, onStatusUpdated]);
+
   return (
-    <div dir="rtl" className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-5 rounded-lg bg-surface p-6">
         <PageHeader
           title={reference}
           description={`طلب من ${customerName}`}
           actions={
             <>
-              <CopyButton value={order.id} label="رقم الطلب" />
-              <OrderStatusBadge status={order.status} />
+              <CopyButton value={detail.id} label="رقم الطلب" />
+              <OrderStatusBadge status={detail.status} />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="إغلاق اللوحة"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-secondary hover:text-foreground"
+              >
+                <IconClose size={18} />
+              </button>
             </>
           }
         />
@@ -83,7 +191,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 type-body-md text-muted">
             <div className="flex items-center gap-2">
               <dt className="text-subtle">تاريخ الطلب</dt>
-              <dd className="text-foreground">{formatDateTime(order.createdAt)}</dd>
+              <dd className="text-foreground">
+                {formatDateTime(detail.createdAt)}
+              </dd>
             </div>
 
             <div className="flex items-center gap-2">
@@ -95,13 +205,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           <div className="flex flex-col gap-1">
             <span className="type-label text-muted">إجمالي الطلب</span>
             <span className="tabular type-metric text-primary">
-              {formatPrice(order.totalPrice)}
+              {formatPrice(detail.totalPrice)}
             </span>
           </div>
         </div>
       </header>
 
-      <OrderPipeline status={order.status} />
+      <OrderPipeline status={detail.status} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-6">
@@ -110,7 +220,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             description="كل صنف في الطلب بالسعر المسجّل وقت إتمامه."
             contentClassName="p-0"
           >
-            <OrderItemsTable items={order.items} />
+            <OrderItemsTable items={detail.items} />
           </Section>
 
           <Section
@@ -118,9 +228,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             description="مجموع الأصناف ورسوم التوصيل والمبلغ الإجمالي."
           >
             <OrderSummary
-              subtotal={order.subtotal}
-              deliveryFee={order.deliveryFee}
-              totalPrice={order.totalPrice}
+              subtotal={detail.subtotal}
+              deliveryFee={detail.deliveryFee}
+              totalPrice={detail.totalPrice}
             />
           </Section>
         </div>
@@ -134,7 +244,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               <div className="flex items-center gap-3">
                 <UserAvatar
                   profile={{
-                    full_name: order.customer.fullName,
+                    full_name: detail.customer.fullName,
                     role: "customer",
                   }}
                   size="lg"
@@ -152,13 +262,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <dt className="type-label text-muted">رقم الهاتف</dt>
                   <dd className="type-body-md text-foreground">
-                    {order.customer.phoneNumber ? (
+                    {detail.customer.phoneNumber ? (
                       <a
-                        href={`tel:${order.customer.phoneNumber}`}
+                        href={`tel:${detail.customer.phoneNumber}`}
                         dir="ltr"
                         className="tabular transition-colors hover:text-primary"
                       >
-                        {formatPhone(order.customer.phoneNumber)}
+                        {formatPhone(detail.customer.phoneNumber)}
                       </a>
                     ) : (
                       "—"
@@ -169,13 +279,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <dt className="type-label text-muted">البريد الإلكتروني</dt>
                   <dd className="type-body-md text-foreground">
-                    {order.customer.email ? (
+                    {detail.customer.email ? (
                       <a
-                        href={`mailto:${order.customer.email}`}
+                        href={`mailto:${detail.customer.email}`}
                         dir="ltr"
                         className="break-all transition-colors hover:text-primary"
                       >
-                        {order.customer.email}
+                        {detail.customer.email}
                       </a>
                     ) : (
                       "—"
@@ -265,13 +375,64 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             contentClassName="flex flex-col gap-2"
           >
             <OrderDetailActions
-              orderId={order.id}
+              orderId={detail.id}
               orderReference={reference}
-              currentStatus={order.status}
+              currentStatus={detail.status}
               canWrite={canWrite}
+              onStatusUpdated={handleStatusUpdated}
             />
           </Section>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+function OrderDetailDrawerSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true" aria-live="polite">
+      <span className="sr-only">جارٍ تحميل تفاصيل الطلب…</span>
+
+      <div className="flex flex-col gap-5 rounded-lg bg-surface p-6">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+
+        <Skeleton className="h-16 w-full" />
+      </div>
+
+      <Skeleton className="h-28 w-full rounded-lg" />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-36 w-full rounded-lg" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-52 w-full rounded-lg" />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-36" />
+            <Skeleton className="h-36 w-full rounded-lg" />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     </div>
   );
