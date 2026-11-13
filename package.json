@@ -13,7 +13,6 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.58.0",
     "@tailwindcss/postcss": "^4.3.5",
     "@tauri-apps/api": "^2",

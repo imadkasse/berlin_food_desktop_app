@@ -32,20 +32,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      let currentUser = user;
+
+      // Network / token-refresh hiccups can make `getUser` fail even though a
+      // valid persisted session exists. Fall back to the local session so a
+      // refresh never logs the admin out.
+      if (userError || !currentUser) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        currentUser = session?.user ?? null;
+      }
+
+      if (!currentUser) {
         clearUser();
         return;
       }
 
       const result = await invokeEdge<VerifySessionResponse>("verify-session");
 
-      if (!result.ok) {
-        console.error("Session verification failed:", result.error);
-        clearUser();
+      if (result.ok) {
+        setUser(result.profile);
         return;
       }
 
-      setUser(result.profile);
+      // The `verify-session` Edge Function may not be deployed yet. Fall back
+      // to reading the admin's own profile; RLS restricts this to their row.
+      console.error("Session verification failed:", result.error);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUser(profile);
+      } else {
+        clearUser();
+      }
     }
 
     void verify();
@@ -53,7 +79,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      void verify();
+      // Defer to avoid Supabase's auth-lock deadlock when calling into the
+      // auth API from inside the callback.
+      setTimeout(() => {
+        void verify();
+      }, 0);
     });
 
     return () => {

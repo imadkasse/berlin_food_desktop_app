@@ -114,7 +114,6 @@ function LoginForm({ nextPath, unauthorized }: LoginFormProps) {
       if (profile) setUser(profile);
 
       router.push(nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard");
-      router.refresh();
     } catch {
       setFormError("حدث خطأ غير متوقع أثناء تسجيل الدخول. حاول مرة أخرى.");
     } finally {
