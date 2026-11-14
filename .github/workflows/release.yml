@@ -61,16 +61,18 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # 1. تثبيت pnpm أولاً ليكون متوفراً في الـ PATH
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      # 2. ثم إعداد Node.js مع تفعيل كاش pnpm
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: "pnpm"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Install Frontend Dependencies
         run: pnpm install
